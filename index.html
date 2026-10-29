@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>라스트 어사일럼 서버시간 계산기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        },
+                        server: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                        sans: ['Inter', 'Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+        }
+        .time-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-40 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-brand-50 border border-brand-100 rounded-xl text-brand-600 shadow-sm">
+                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none">라스트 어사일럼 서버시간 계산기</h1>
+                    <p class="text-xs text-slate-500 mt-1">현지시간(KST) 및 서버시간(UTC-2) 실시간 변환 도구</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>실시간 동기화 중</span>
+                </div>
+                <button onclick="toggleSettingsModal()" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 transition-all text-xs font-semibold flex items-center gap-1.5">
+                    <i class="fa-solid fa-gear"></i>
+                    <span class="hidden sm:inline">서버 시차 설정</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow space-y-8">
+        
+        <!-- Live Clocks Section -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Local Time (KST) Card -->
+            <div class="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -z-10 opacity-70"></div>
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            한국 현지시간 (KST / UTC+9)
+                        </span>
+                        <i class="fa-solid fa-location-dot text-emerald-500 text-lg"></i>
+                    </div>
+
+                    <div id="kst-date" class="text-slate-500 font-medium text-sm sm:text-base mt-2">
+                        ----년 --월 --일 -요일
+                    </div>
+
+                    <div id="kst-time" class="time-font text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight my-3">
+                        00:00:00
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
+                    <span>기준 타임존: Asia/Seoul</span>
+                    <span id="kst-ms" class="time-font text-emerald-600 font-semibold">.000 ms</span>
+                </div>
+            </div>
+
+            <!-- Server Time Card -->
+            <div class="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 opacity-70"></div>
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span id="server-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            라스트 어사일럼 서버시간 (UTC-2)
+                        </span>
+                        <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-blue-600 text-xs flex items-center gap-1 transition-colors">
+                            <i class="fa-solid fa-sliders"></i> 시차 변경
+                        </button>
+                    </div>
+
+                    <div id="server-date" class="text-slate-500 font-medium text-sm sm:text-base mt-2">
+                        ----년 --월 --일 -요일
+                    </div>
+
+                    <div id="server-time" class="time-font text-4xl sm:text-5xl md:text-6xl font-extrabold text-blue-600 tracking-tight my-3">
+                        00:00:00
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
+                    <span id="server-offset-label">KST 대비 -11시간 (서버가 11시간 느림)</span>
+                    <span id="server-ms" class="time-font text-blue-600 font-semibold">.000 ms</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Prominent Bidirectional Time Converter -->
+        <section class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md relative">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-2">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+                        <i class="fa-solid fa-arrows-rotate text-brand-500"></i>
+                        양방향 시간 변환기
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">현지시간이나 서버시간을 입력하면 시차를 즉시 계산하여 변환합니다.</p>
+                </div>
+                <button onclick="resetConverterToNow()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>현재 시간으로 리셋</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                <!-- Local Time Input Block -->
+                <div class="lg:col-span-5 bg-slate-50/80 border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-flag text-emerald-600"></i> 한국 현지시간 (KST)
+                        </label>
+                        <span class="text-[11px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-medium">UTC+9</span>
+                    </div>
+                    <input type="datetime-local" id="input-kst" oninput="convertFromKST()" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-base font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-all">
+                    <p id="kst-parsed-str" class="text-xs text-slate-500 font-medium text-right">--</p>
+                </div>
+
+                <!-- Swap / Sync Indicator -->
+                <div class="lg:col-span-2 flex justify-center">
+                    <div class="p-3 bg-brand-50 border border-brand-100 text-brand-600 rounded-full shadow-sm text-lg">
+                        <i class="fa-solid fa-arrow-right-arrow-left hidden lg:block"></i>
+                        <i class="fa-solid fa-arrow-down-up lg:hidden"></i>
+                    </div>
+                </div>
+
+                <!-- Server Time Input Block -->
+                <div class="lg:col-span-5 bg-slate-50/80 border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-server text-blue-600"></i> 라스트 어사일럼 서버시간
+                        </label>
+                        <span id="converter-server-badge" class="text-[11px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded font-medium">UTC-2</span>
+                    </div>
+                    <input type="datetime-local" id="input-server" oninput="convertFromServer()" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-base font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all">
+                    <p id="server-parsed-str" class="text-xs text-slate-500 font-medium text-right">--</p>
+                </div>
+            </div>
+
+            <!-- Conversion Result Highlight Card -->
+            <div id="converter-result-box" class="mt-6 p-4 bg-brand-50/80 border border-brand-100 rounded-2xl text-center text-sm text-slate-700 font-medium">
+                시간을 입력하면 양방향 변환 결과가 표시됩니다.
+            </div>
+        </section>
+
+        <!-- Custom Major Event Reference List -->
+        <section class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 pb-5 gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+                        <i class="fa-solid fa-calendar-check text-indigo-600"></i>
+                        주요 이벤트 기준표
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">게임 내 주요 리셋, 연맹전, 마차 등의 출발/초기화 시각을 등록하고 관리하세요.</p>
+                </div>
+                
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button onclick="openAddEventModal()" class="w-full sm:w-auto px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>새 이벤트 추가</span>
+                    </button>
+                    <button onclick="resetEventsToDefault()" title="기본값으로 복원" class="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs transition-colors border border-slate-200">
+                        <i class="fa-solid fa-arrow-rotate-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Events List Table / Cards -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[600px]">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">
+                            <th class="py-3 px-4 rounded-l-xl">이벤트 이름</th>
+                            <th class="py-3 px-4">서버 시간 (기준)</th>
+                            <th class="py-3 px-4">한국 현지시간 (KST)</th>
+                            <th class="py-3 px-4">설명 / 주기</th>
+                            <th class="py-3 px-4 text-right rounded-r-xl">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-table-body" class="divide-y divide-slate-100 text-sm">
+                        <!-- Dynamic event rows will be rendered here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="no-events-msg" class="hidden text-center py-8 text-slate-400 text-sm">
+                등록된 이벤트가 없습니다. [새 이벤트 추가] 버튼을 눌러 추가해 보세요.
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
+        <p>라스트 어사일럼 서버시간 계산기 &copy; 2026. All rights reserved.</p>
+    </footer>
+
+    <!-- Settings Modal (Offset Modifier) -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 class="font-bold text-slate-900 text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-blue-600"></i> 서버 시차 오프셋 설정
+                </h3>
+                <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-slate-700 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Offset Preset Selector -->
+            <div class="space-y-3">
+                <label class="text-xs font-bold text-slate-700">추천 빠른 사전설정 (KST 기준)</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setPresetOffset(-11)" class="p-3 text-xs rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-medium text-left flex justify-between items-center transition-all">
+                        <span>-11시간 (기본값: UTC-2)</span>
+                        <i class="fa-solid fa-check text-emerald-600 opacity-0 preset-check" id="check--11"></i>
+                    </button>
+                    <button onclick="setPresetOffset(-9)" class="p-3 text-xs rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-medium text-left flex justify-between items-center transition-all">
+                        <span>-9시간 (UTC 표준)</span>
+                        <i class="fa-solid fa-check text-emerald-600 opacity-0 preset-check" id="check--9"></i>
+                    </button>
+                    <button onclick="setPresetOffset(-14)" class="p-3 text-xs rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-medium text-left flex justify-between items-center transition-all">
+                        <span>-14시간 (미국 동부)</span>
+                        <i class="fa-solid fa-check text-emerald-600 opacity-0 preset-check" id="check--14"></i>
+                    </button>
+                    <button onclick="setPresetOffset(-17)" class="p-3 text-xs rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-medium text-left flex justify-between items-center transition-all">
+                        <span>-17시간 (미국 태평양)</span>
+                        <i class="fa-solid fa-check text-emerald-600 opacity-0 preset-check" id="check--17"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Hours Input -->
+            <div class="space-y-2">
+                <label class="text-xs font-bold text-slate-700">직접 오프셋 설정 (시간)</label>
+                <div class="flex items-center gap-3">
+                    <input type="number" id="custom-offset-input" step="0.5" value="-11" class="flex-grow bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button onclick="applyCustomOffset()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm">
+                        적용
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-500">KST(한국) 대비 서버시간의 시차를 설정합니다. (서버가 11시간 느릴 경우 -11)</p>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 flex justify-end">
+                <button onclick="toggleSettingsModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Event Modal -->
+    <div id="event-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 id="event-modal-title" class="font-bold text-slate-900 text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-brand-600"></i> 새 이벤트 추가
+                </h3>
+                <button onclick="closeEventModal()" class="text-slate-400 hover:text-slate-700 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="event-form" onsubmit="saveEvent(event)" class="space-y-4">
+                <input type="hidden" id="event-edit-id" value="">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">이벤트 명칭 *</label>
+                    <input type="text" id="event-name" required placeholder="예: 일일 리셋, 마차 출발, 연맹전 등" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">서버 시작 시간 (HH:MM) *</label>
+                        <input type="time" id="event-time" required value="08:00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">서버 종료 시간 (선택)</label>
+                        <input type="time" id="event-end-time" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">설명 / 주기</label>
+                    <input type="text" id="event-desc" placeholder="예: 매일 진행, 서버 00시 리셋 등" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeEventModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+                        취소
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm">
+                        저장하기
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // Default Offset: Server is UTC-2 (-11 Hours compared to KST)
+        let serverOffsetHours = -11;
+
+        const daysKr = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+        // Initial Major Events Preset
+        const defaultEvents = [
+            { id: '1', name: '일일 리셋 (Daily Reset)', serverTime: '00:00', serverEndTime: '', desc: '매일 서버시간 00시 리셋' },
+            { id: '2', name: '길드마차 VIP 출발', serverTime: '08:00', serverEndTime: '09:00', desc: '초대장 발송 및 마차 출발 타임' },
+            { id: '3', name: '주간 리셋 (Weekly Reset)', serverTime: '00:00', serverEndTime: '', desc: '주간 미션 및 랭킹 초기화' }
+        ];
+
+        let eventsList = [];
+
+        window.onload = function() {
+            // Load saved offset
+            const savedOffset = localStorage.getItem('la_server_offset');
+            if (savedOffset !== null) {
+                serverOffsetHours = parseFloat(savedOffset);
+            }
+            document.getElementById('custom-offset-input').value = serverOffsetHours;
+            updateOffsetUI();
+
+            // Load saved custom events
+            const savedEvents = localStorage.getItem('la_events_list');
+            if (savedEvents) {
+                try {
+                    eventsList = JSON.parse(savedEvents);
+                } catch(e) {
+                    eventsList = [...defaultEvents];
+                }
+            } else {
+                eventsList = [...defaultEvents];
+            }
+
+            renderEventsTable();
+
+            // Start clock loop
+            updateClocks();
+            setInterval(updateClocks, 50);
+
+            // Set default converter time
+            resetConverterToNow();
+        };
+
+        // Live Clock Loop
+        function updateClocks() {
+            const now = new Date();
+
+            // 1. KST
+            const kstFormatted = formatTime(now);
+            const kstDateFormatted = formatDate(now);
+            document.getElementById('kst-time').textContent = kstFormatted.timeStr;
+            document.getElementById('kst-date').textContent = kstDateFormatted;
+            document.getElementById('kst-ms').textContent = `.${kstFormatted.msStr} ms`;
+
+            // 2. Server Time
+            const serverDateObj = new Date(now.getTime() + (serverOffsetHours * 60 * 60 * 1000));
+            const serverFormatted = formatTime(serverDateObj);
+            const serverDateFormatted = formatDate(serverDateObj);
+            document.getElementById('server-time').textContent = serverFormatted.timeStr;
+            document.getElementById('server-date').textContent = serverDateFormatted;
+            document.getElementById('server-ms').textContent = `.${serverFormatted.msStr} ms`;
+        }
+
+        // Converter Logic
+        function convertFromKST() {
+            const kstVal = document.getElementById('input-kst').value;
+            if (!kstVal) return;
+
+            const kstDate = new Date(kstVal);
+            const serverDate = new Date(kstDate.getTime() + (serverOffsetHours * 60 * 60 * 1000));
+
+            document.getElementById('input-server').value = toLocalISOString(serverDate);
+            
+            document.getElementById('kst-parsed-str').textContent = `${formatDateShort(kstDate)}`;
+            document.getElementById('server-parsed-str').textContent = `${formatDateShort(serverDate)}`;
+
+            updateConverterResultBox(
+                `한국시간 <strong class="text-emerald-700 font-bold">${formatDate(kstDate)} ${kstVal.split('T')[1]}</strong> 은<br>` +
+                `서버시간 <strong class="text-blue-700 font-bold">${formatDate(serverDate)} ${toLocalISOString(serverDate).split('T')[1]}</strong> 입니다.`
+            );
+        }
+
+        function convertFromServer() {
+            const serverVal = document.getElementById('input-server').value;
+            if (!serverVal) return;
+
+            const serverDate = new Date(serverVal);
+            const kstDate = new Date(serverDate.getTime() - (serverOffsetHours * 60 * 60 * 1000));
+
+            document.getElementById('input-kst').value = toLocalISOString(kstDate);
+
+            document.getElementById('kst-parsed-str').textContent = `${formatDateShort(kstDate)}`;
+            document.getElementById('server-parsed-str').textContent = `${formatDateShort(serverDate)}`;
+
+            updateConverterResultBox(
+                `서버시간 <strong class="text-blue-700 font-bold">${formatDate(serverDate)} ${serverVal.split('T')[1]}</strong> 은<br>` +
+                `한국시간 <strong class="text-emerald-700 font-bold">${formatDate(kstDate)} ${toLocalISOString(kstDate).split('T')[1]}</strong> 입니다.`
+            );
+        }
+
+        function resetConverterToNow() {
+            const now = new Date();
+            document.getElementById('input-kst').value = toLocalISOString(now);
+            convertFromKST();
+        }
+
+        function updateConverterResultBox(htmlContent) {
+            document.getElementById('converter-result-box').innerHTML = htmlContent;
+        }
+
+        // Calculate KST equivalent for an event time (HH:MM string)
+        function calculateKstFromServerTime(timeStr) {
+            if (!timeStr) return '';
+            const [h, m] = timeStr.split(':').map(Number);
+            const localHour = (h - serverOffsetHours + 24) % 24;
+            return `${pad(localHour)}:${pad(m)}`;
+        }
+
+        // Render Events Table
+        function renderEventsTable() {
+            const tbody = document.getElementById('events-table-body');
+            const noMsg = document.getElementById('no-events-msg');
+
+            tbody.innerHTML = '';
+
+            if (eventsList.length === 0) {
+                noMsg.classList.remove('hidden');
+                return;
+            } else {
+                noMsg.classList.add('hidden');
+            }
+
+            eventsList.forEach(event => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-colors";
+
+                const kstStart = calculateKstFromServerTime(event.serverTime);
+                const kstEnd = event.serverEndTime ? calculateKstFromServerTime(event.serverEndTime) : '';
+
+                const serverTimeDisplay = event.serverEndTime 
+                    ? `<span class="font-bold text-slate-800">${event.serverTime}</span> ~ <span class="font-bold text-slate-800">${event.serverEndTime}</span>`
+                    : `<span class="font-bold text-slate-800">${event.serverTime}</span>`;
+
+                const kstTimeDisplay = event.serverEndTime 
+                    ? `<span class="font-bold text-emerald-600">${kstStart}</span> ~ <span class="font-bold text-emerald-600">${kstEnd}</span>`
+                    : `<span class="font-bold text-emerald-600">${kstStart}</span>`;
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 font-semibold text-slate-900">
+                        ${escapeHtml(event.name)}
+                    </td>
+                    <td class="py-3.5 px-4 font-mono text-xs">
+                        ${serverTimeDisplay}
+                    </td>
+                    <td class="py-3.5 px-4 font-mono text-xs">
+                        ${kstTimeDisplay}
+                    </td>
+                    <td class="py-3.5 px-4 text-xs text-slate-500">
+                        ${escapeHtml(event.desc || '-')}
+                    </td>
+                    <td class="py-3.5 px-4 text-right">
+                        <button onclick="editEvent('${event.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 transition-colors text-xs mr-1" title="수정">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deleteEvent('${event.id}')" class="p-1.5 text-slate-400 hover:text-red-500 transition-colors text-xs" title="삭제">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Event Modal Actions
+        function openAddEventModal() {
+            document.getElementById('event-modal-title').innerHTML = `<i class="fa-solid fa-plus-circle text-brand-600"></i> 새 이벤트 추가`;
+            document.getElementById('event-edit-id').value = '';
+            document.getElementById('event-form').reset();
+            document.getElementById('event-modal').classList.remove('hidden');
+        }
+
+        function editEvent(id) {
+            const ev = eventsList.find(item => item.id === id);
+            if (!ev) return;
+
+            document.getElementById('event-modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-600"></i> 이벤트 수정`;
+            document.getElementById('event-edit-id').value = ev.id;
+            document.getElementById('event-name').value = ev.name;
+            document.getElementById('event-time').value = ev.serverTime;
+            document.getElementById('event-end-time').value = ev.serverEndTime || '';
+            document.getElementById('event-desc').value = ev.desc || '';
+
+            document.getElementById('event-modal').classList.remove('hidden');
+        }
+
+        function closeEventModal() {
+            document.getElementById('event-modal').classList.add('hidden');
+        }
+
+        function saveEvent(e) {
+            e.preventDefault();
+            const editId = document.getElementById('event-edit-id').value;
+            const name = document.getElementById('event-name').value.trim();
+            const serverTime = document.getElementById('event-time').value;
+            const serverEndTime = document.getElementById('event-end-time').value;
+            const desc = document.getElementById('event-desc').value.trim();
+
+            if (!name || !serverTime) return;
+
+            if (editId) {
+                // Update
+                const index = eventsList.findIndex(item => item.id === editId);
+                if (index !== -1) {
+                    eventsList[index] = { id: editId, name, serverTime, serverEndTime, desc };
+                }
+            } else {
+                // Add New
+                const newId = Date.now().toString();
+                eventsList.push({ id: newId, name, serverTime, serverEndTime, desc });
+            }
+
+            saveEventsToStorage();
+            renderEventsTable();
+            closeEventModal();
+        }
+
+        function deleteEvent(id) {
+            eventsList = eventsList.filter(item => item.id !== id);
+            saveEventsToStorage();
+            renderEventsTable();
+        }
+
+        function resetEventsToDefault() {
+            eventsList = [...defaultEvents];
+            saveEventsToStorage();
+            renderEventsTable();
+        }
+
+        function saveEventsToStorage() {
+            localStorage.setItem('la_events_list', JSON.stringify(eventsList));
+        }
+
+        // Offset UI Management
+        function updateOffsetUI() {
+            const absOffset = Math.abs(serverOffsetHours);
+            const offsetText = serverOffsetHours < 0 
+                ? `KST 대비 -${absOffset}시간 (서버가 ${absOffset}시간 느림)`
+                : `KST 대비 +${absOffset}시간`;
+
+            document.getElementById('server-offset-label').textContent = offsetText;
+            
+            // Badge text
+            const badgeText = serverOffsetHours === -11 
+                ? '라스트 어사일럼 서버시간 (UTC-2)' 
+                : `서버시간 (KST ${serverOffsetHours >= 0 ? '+' : ''}${serverOffsetHours}h)`;
+            
+            document.getElementById('server-badge').textContent = badgeText;
+            document.getElementById('converter-server-badge').textContent = `UTC${serverOffsetHours + 9 >= 0 ? '+' : ''}${serverOffsetHours + 9}`;
+
+            // Highlight active preset button
+            document.querySelectorAll('.preset-check').forEach(el => el.classList.add('opacity-0'));
+            const activeCheck = document.getElementById(`check-${serverOffsetHours}`);
+            if (activeCheck) activeCheck.classList.remove('opacity-0');
+
+            localStorage.setItem('la_server_offset', serverOffsetHours);
+
+            if (document.getElementById('input-kst').value) {
+                convertFromKST();
+            }
+            renderEventsTable();
+        }
+
+        function setPresetOffset(hours) {
+            serverOffsetHours = hours;
+            document.getElementById('custom-offset-input').value = hours;
+            updateOffsetUI();
+        }
+
+        function applyCustomOffset() {
+            const val = parseFloat(document.getElementById('custom-offset-input').value);
+            if (!isNaN(val)) {
+                serverOffsetHours = val;
+                updateOffsetUI();
+                toggleSettingsModal();
+            }
+        }
+
+        function toggleSettingsModal() {
+            document.getElementById('settings-modal').classList.toggle('hidden');
+        }
+
+        // Helper Functions
+        function formatTime(date) {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            const ms = String(date.getMilliseconds()).padStart(3, '0');
+            return { timeStr: `${hours}:${minutes}:${seconds}`, msStr: ms };
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dayOfWeek = daysKr[date.getDay()];
+            return `${year}년 ${month}월 ${day}일 (${dayOfWeek.slice(0, 1)})`;
+        }
+
+        function formatDateShort(date) {
+            return `${date.getMonth() + 1}/${date.getDate()} (${daysKr[date.getDay()].slice(0, 1)})`;
+        }
+
+        function toLocalISOString(date) {
+            const tzOffset = date.getTimezoneOffset() * 60000;
+            return (new Date(date - tzOffset)).toISOString().slice(0, 16);
+        }
+
+        function pad(num) {
+            return String(Math.floor(num)).padStart(2, '0');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
