@@ -151,19 +151,19 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 발급받으신 진짜 Firebase 설정값[cite: 2]
+    // 문법 오류가 수정된 Firebase 설정 객체
     const firebaseConfig = {
-      apiKey: "AIzaSyCuBA_wyHNNxxK22pjqoYuep2hI1fszdiQ",[cite: 2]
-      authDomain: "last-asylum-jaoham.firebaseapp.com",[cite: 2]
-      projectId: "last-asylum-jaoham",[cite: 2]
+      apiKey: "AIzaSyCuBA_wyHNNxxK22pjqoYuep2hI1fszdiQ",
+      authDomain: "last-asylum-jaoham.firebaseapp.com",
+      projectId: "last-asylum-jaoham",
       storageBucket: "last-asylum-jaoham.appspot.com",
-      messagingSenderId: "549759637978",[cite: 2]
-      appId: "1:549759637978:web:e598eda89c1b000ec008e3",[cite: 2]
-      measurementId: "G-PXMX6KKXBR"[cite: 2]
+      messagingSenderId: "549759637978",
+      appId: "1:549759637978:web:e598eda89c1b000ec008e3",
+      measurementId: "G-PXMX6KKXBR"
     };
 
-    // Firebase 초기화[cite: 2]
-    const app = initializeApp(firebaseConfig);[cite: 2]
+    // Firebase 초기화
+    const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const eventsCol = collection(db, "events");
 
